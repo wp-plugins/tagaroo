@@ -3,13 +3,14 @@
 Plugin Name: tagaroo
 Plugin URI: http://tagaroo.opencalais.com
 Description: Find and suggest tags and photos (from Flickr) for your content. Integrates with the Calais service.
-Version: 1.0
+Version: 1.1
 Author: Crowd Favorite and Reuters
 Author URI: http://crowdfavorite.com
 */
 
 define(OC_WP_GTE_23, version_compare($wp_version, '2.3', '>='));
 define(OC_WP_GTE_25, version_compare($wp_version, '2.5', '>='));
+define(OC_WP_GTE_26, version_compare($wp_version, '2.6', '>='));
 
 define(OC_DRAFT_API_KEY, 'mdbtyu4ku286uhpakuj48dgj');
 define(FLICKR_API_KEY, 'f3745df3c6537073c523dc6d06751250');
@@ -750,6 +751,10 @@ function oc_generate_commit_id($post) {
 }
 
 function oc_save_post($post_id, $post) {
+	if( OC_WP_GTE_26 && $post->post_type == 'revision') {
+		// it's at least WP2.6 and a revision, so don't add meta data, just return. 
+		return;
+	}
 	if ($post->post_status == 'publish') {
 		// commit the content to opencalais
 		$privacy_prefs = get_option('oc_privacy_prefs');
