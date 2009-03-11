@@ -36,7 +36,7 @@ oc.pingCalais = function() {
 	jQuery.ajax({
 		type: 'POST',
 		url: 'index.php',
-		dataType: 'html',
+		dataType: 'text',
 		data: { 
 			oc_action: 'api_proxy_oc', 
 			text: text
@@ -57,7 +57,7 @@ oc.pingCalais = function() {
 				oc.hideTagSearchingIndicator();
 			}
 		},
-		error: function() { 
+		error: function() {
 			oc.hideTagSearchingIndicator();
 			oc.handleAjaxFailure();
 		}
@@ -84,15 +84,22 @@ oc.handleCalaisResponse = function(responseString) {
 			jQuery('#oc_api_notifications').html('<span>No new tags extracted.<br/><a href="javascript:oc.pingCalais();">Suggest Tags</a></span>');
 		}
 	}
+	try {
+		oc.lastResponse = jQuery.xmlToJSON(jQuery.textToXML(responseString));
+	}
+	catch (error) {
+		//console.error(error);
+		throw error;
+	}
 
-	oc.lastResponse = jQuery.xmlToJSON(jQuery.textToXML(responseString));
-	if (oc.isValidResponse(oc.lastResponse) && oc.lastResponse.RDF[0].Description.length > 0) {
+
+	if (oc.isValidResponse(oc.lastResponse) && oc.lastResponse.Description.length > 0) {
 		
 		jQuery('#oc_suggest_tags_link').show();
 		
 		oc.tagManager.deleteUnusedSuggestedTags();
 
-		var artifacts = oc.entityManager.generateArtifacts(oc.lastResponse.RDF[0].Description);
+		var artifacts = oc.entityManager.generateArtifacts(oc.lastResponse.Description);
 		var tagsWereMade = false;
 		jQuery.each(artifacts, function(i, artifact) {
 			if (artifact.shouldGenerateTag && artifact.shouldGenerateTag()) {
@@ -119,7 +126,7 @@ oc.handleCalaisResponse = function(responseString) {
 };
 
 oc.isValidResponse = function(responseObject) {
-	return ((typeof(oc.lastResponse) != 'undefined') && typeof(oc.lastResponse.RDF) != 'undefined');
+	return ((typeof(oc.lastResponse) != 'undefined') && typeof oc.lastResponse.RootName != 'undefined' && oc.lastResponse.RootName == 'rdf:RDF');
 };
 
 oc.tickleIdleTimer = function() {
@@ -279,9 +286,12 @@ oc.initPostEditPage = function() {
 		);
 		jQuery('#oc_tag_controls').append('<input id="tags-input" type="hidden" value="" name="tags_input"/>');
 	}
-	else if (oc.wp_gte_25) {
+	else if (oc.wp_gte_25 && !oc.wp_gte_27) {
 		jQuery('#tagsdiv').remove();
 		jQuery('#oc_tag_controls div.inside').append('<input id="tags-input" type="hidden" value="" name="tags_input"/>');
+	}
+	else if (oc.wp_gte_27) {
+		jQuery('#tagsdiv').remove();
 	}
 	
 	// set up buckets

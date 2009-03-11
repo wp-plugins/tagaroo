@@ -3,7 +3,7 @@
 Plugin Name: tagaroo
 Plugin URI: http://tagaroo.opencalais.com
 Description: Find and suggest tags and photos (from Flickr) for your content. Integrates with the Calais service.
-Version: 1.1
+Version: 1.2
 Author: Crowd Favorite and Reuters
 Author URI: http://crowdfavorite.com
 */
@@ -11,6 +11,7 @@ Author URI: http://crowdfavorite.com
 define(OC_WP_GTE_23, version_compare($wp_version, '2.3', '>='));
 define(OC_WP_GTE_25, version_compare($wp_version, '2.5', '>='));
 define(OC_WP_GTE_26, version_compare($wp_version, '2.6', '>='));
+define(OC_WP_GTE_27, version_compare($wp_version, '2.7', '>='));
 
 define(OC_DRAFT_API_KEY, 'mdbtyu4ku286uhpakuj48dgj');
 define(FLICKR_API_KEY, 'f3745df3c6537073c523dc6d06751250');
@@ -86,13 +87,13 @@ function oc_api_param_xml($req_id = null, $metadata = '', $allow_distribution = 
 	$submitter = get_bloginfo('home');
 	return '
 		<c:params xmlns:c="http://s.opencalais.com/1/pred/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-			<c:processingDirectives c:contentType="text/html" c:outputFormat="xml/rdf">
-			</c:processingDirectives>
-
+			<c:processingDirectives c:contentType="text/html" c:outputFormat="xml/rdf"></c:processingDirectives>
 			<c:userDirectives c:allowDistribution="'.($allow_distribution ? 'true' : 'false').'" c:allowSearch="'.($allow_search ? 'true' : 'false').'" c:externalID="'.$req_id.'" c:submitter="'.$submitter.'">
 			</c:userDirectives>
-
-			<c:externalMetadata>'.$metadata.'</c:externalMetadata>
+			<c:externalMetadata>
+				'.$metadata.'
+				<rdf:description><c:caller>Tagaroo</c:caller></rdf:description>
+			</c:externalMetadata>
 		</c:params>
 	';
 }
@@ -112,15 +113,17 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 	else {
 		$key = $oc_api_key;
 	}
+
 	$snoop = new Snoopy;
 	$snoop->read_timeout = 5;
-	$success = $snoop->submit('http://api.opencalais.com/enlighten/calais.asmx/Enlighten', array(
+	$success = $snoop->submit('http://api1.opencalais.com/enlighten/rest', array(
 		'licenseID' => $key,
 		'content' => $content,
 		'paramsXML' => $paramsXML
 	));
+	
 	if ($success) {
-		if (strpos($snoop->results, '403 Developer Inactive')) {
+		if (strpos($snoop->results, 'Invalid request format - the request has missing or invalid parameters') !== false) {
 			return array(
 				'success' => false,
 				'error' => 'API Key Invalid.'
@@ -136,7 +139,6 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 		}
 		return array(
 			'success' => true,
-			'headers' => $snoop->headers,
 			'content' => $snoop->results
 		);
 	}
@@ -231,7 +233,7 @@ function oc_request_handler() {
 						else if ($_POST['oc_api_key'] != $oc_api_key){
 							$key_changed = true;
 							$oc_api_key = $_POST['oc_api_key'];
-							$test = oc_ping_oc_api('Wordpress Plugin API key test.');
+							$test = oc_ping_oc_api('Wordpress Plugin API key test.', OC_FINAL_CONTENT);
 							if ($test['success']) {
 								$success = update_option('oc_api_key', stripslashes($_POST['oc_api_key']));
 								if (!$success) {
@@ -271,10 +273,8 @@ function oc_request_handler() {
 					echo '__oc_request_failed__{ error: \''.addslashes($result['error']).'\'}';
 				}
 				else {
-					foreach ($result['headers'] as $response_header) {
-						header($response_header);
-					}
-					echo html_entity_decode($result['content']);
+					header('Content-Type: text/xml; charset=utf-8');
+					echo $result['content'];
 				}
 			die();
 			case 'api_proxy_flickr':
@@ -284,8 +284,10 @@ function oc_request_handler() {
 					echo '__oc_request_failed__{ error: \''.addslashes($result['error']).'\'}';
 				}
 				else {
-					foreach ($result['headers'] as $response_header) {
-						header($response_header);
+					if (isset($result['headers']) && gettype($result['headers']) == 'array') {
+						foreach ($result['headers'] as $response_header) {
+							header($response_header);
+						}
 					}
 					echo $result['content'];
 				}
@@ -303,6 +305,7 @@ function oc_request_handler() {
 				}
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFCore.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCCore.js');
+				print('oc.wp_gte_27 = '.(OC_WP_GTE_27 ? 'true' : 'false').';');
 				print('oc.wp_gte_25 = '.(OC_WP_GTE_25 ? 'true' : 'false').';');
 				print('oc.wp_gte_23 = '.(OC_WP_GTE_23 ? 'true' : 'false').';');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/xmlObjectifier.js');
@@ -392,7 +395,7 @@ function oc_get_control_wrapper($which, $id = '', $title = '') {
 			</div>
 		';
 	}
-	else if (OC_WP_GTE_25) {
+	else if (OC_WP_GTE_25 && !OC_WP_GTE_27) {
 		$wrapper['head'] = '
 			<div id="'.$id.'" class="postbox">
 				<h3>'.$title.'</h3>
@@ -402,8 +405,11 @@ function oc_get_control_wrapper($which, $id = '', $title = '') {
 				</div>
 			</div>
 		';
-
-	}		
+	}
+	else if (OC_WP_GTE_27) {
+		// handled via add_meta_box
+		return '';
+	}
 	return $wrapper[$which];
 }
 
@@ -480,10 +486,13 @@ if ($oc_key_entered) {
 	if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
 		add_action('edit_form_advanced', 'oc_open_dbx_group');
 	}
-
-	add_action('edit_form_advanced', 'oc_render_image_controls');
-	add_action('edit_form_advanced', 'oc_render_tag_controls');
-	
+	if (!OC_WP_GTE_27) {
+		add_action('edit_form_advanced', 'oc_render_image_controls');
+		add_action('edit_form_advanced', 'oc_render_tag_controls');
+	}
+	else {
+		// use the meta_box
+	}
 	if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
 		add_action('edit_form_advanced', 'oc_close_dbx_group');
 	}
@@ -639,7 +648,6 @@ function oc_options_form() {
 				<li>You’re done!</li>
 			</ul>';
 	}
-		
 	if ($_GET['oc_api_test_failed']) {
 		$error = '<p><span class="error" style="padding:3px;"><strong>Error</strong>: '.$_GET['oc_api_test_failed'].'</span></p>';
 	}
@@ -713,6 +721,10 @@ function oc_admin_head() {
 			<link type="text/css" href="'.get_bloginfo('wpurl').'/wp-content/plugins/tagaroo/css/ie6.css" rel="stylesheet" />
 			<![endif]-->
 		');
+		if (OC_WP_GTE_27) {
+			add_meta_box('oc_tag_controls', 'tagaroo Tags<div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a>', 'oc_render_tag_controls', 'post', 'normal', 'high');
+			add_meta_box('oc_image_controls', 'tagaroo Images', 'oc_render_image_controls', 'post', 'normal', 'high');
+		}
 	}
 }
 add_action('admin_head', 'oc_admin_head');

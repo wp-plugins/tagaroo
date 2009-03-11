@@ -1,6 +1,14 @@
 
 oc.ImageManager = CFBase.extend({
 	init: function() {
+		var poppet = this;
+		jQuery(document).ready(function() {
+			jQuery(window).resize(function() {
+				setTimeout(function() {
+					poppet.pageForFilmstripSize();
+				}, 500);
+			})
+		});
 	},
 	
 	// general behavior we're looking for is that if we hang on to the last used
@@ -93,7 +101,7 @@ oc.ImageManager = CFBase.extend({
 							oc.handleCalaisConnectionFailure(error);
 						}
 						else {
-							console.error(error)						
+							throw error;
 						}
 					}
 					finally {
@@ -307,17 +315,15 @@ oc.ImageManager = CFBase.extend({
 			edInsertContent(edCanvas, html);
 		}
 	},
-	
+	thumbWidth: 86,
 	pageForFilmstripSize: function() {
-		if (oc.wp_gte_23 && !oc.wp_gte_25) {
-			var filmstripFrame = cf.pageFrame(jQuery('#oc_filmstrip_wrapper').get(0));
-			var n = Math.floor(filmstripFrame.width / 86);
-			if (this.imagesPerPage != n) {
-				this.imagesPerPage = n;
-				this.pingFlickr();
-			}
-			jQuery('#cf_tokenbox_image_filmstrip').width(n * 86);
+		var filmstripFrame = cf.pageFrame(jQuery('#oc_filmstrip_wrapper').get(0));
+		var n = Math.floor((filmstripFrame.width - 138) / this.thumbWidth);	// make room for the pagination controls and scroller
+		if (this.imagesPerPage != n) {
+			this.imagesPerPage = n;
+			this.pingFlickr();
 		}
+		jQuery('#cf_tokenbox_image_filmstrip').width(n * this.thumbWidth);
 	},
 	
 	previewImageLoaded: function(image) {
