@@ -251,7 +251,7 @@ oc.unarchiveSavedTags = function(wpTags) {
 									oc.tagManager.putTagInSuggested(newTag);
 								break;
 								case 'blacklisted':
-									oc.tagManager.putTagInBlacklist(newTag);							
+									oc.tagManager.putTagInBlacklist(newTag);
 								break;
 							}
 						}
@@ -286,12 +286,9 @@ oc.initPostEditPage = function() {
 		);
 		jQuery('#oc_tag_controls').append('<input id="tags-input" type="hidden" value="" name="tags_input"/>');
 	}
-	else if (oc.wp_gte_25 && !oc.wp_gte_27) {
+	else if (oc.wp_gte_25) {
 		jQuery('#tagsdiv').remove();
 		jQuery('#oc_tag_controls div.inside').append('<input id="tags-input" type="hidden" value="" name="tags_input"/>');
-	}
-	else if (oc.wp_gte_27) {
-		jQuery('#tagsdiv').remove();
 	}
 	
 	// set up buckets

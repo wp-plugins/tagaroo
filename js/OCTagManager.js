@@ -310,6 +310,8 @@ oc.TagManager = CFBase.extend({
 
 	// use this instead of new oc.Tag
 	createTagIfNew: function(text, source) {
+		// Calais will return entities with commas in them. we have to de-comma-ify before doing anything else
+		text = text.replace(',', ' ');
 		var slug = cf.slugify(text);
 		var existingTag = this.tagSlugMap[slug];
 		if (typeof(existingTag) == 'undefined') {
