@@ -30,7 +30,9 @@ You can also drag tags up to the tagaroo images list and tagaroo will search Fli
 
 Clicking on a photo will show you a larger preview of the photo, and you can choose the size of the photo you want to add to your post.
 
-== New In 1.3 ==
+== Changelog ==
+
+= 1.3 =
 
 Tagaroo 1.3 will now identify 50 event types (up from 33 in the last version). We have made minor changes to the suggested tag names for some events. 
 
