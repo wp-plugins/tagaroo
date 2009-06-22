@@ -7,7 +7,7 @@ oc.ImageManager = CFBase.extend({
 				setTimeout(function() {
 					poppet.pageForFilmstripSize();
 				}, 500);
-			})
+			});
 		});
 	},
 	
@@ -98,7 +98,8 @@ oc.ImageManager = CFBase.extend({
 					}
 					catch (error) {
 						if (error.name == 'oc_connection_failure') {
-							oc.handleCalaisConnectionFailure(error);
+							error.string = 'Could not contact Flickr.';
+							oc.handleCalaisError(error);
 						}
 						else {
 							throw error;
@@ -126,7 +127,7 @@ oc.ImageManager = CFBase.extend({
 		// release previous image set. if there's a previewed image, we still have a reference to it in
 		// previewedImage.
 		this.images = [];
-		eval('poppet.latestResponse = ' + responseJSON);
+		eval('poppet.latestResponse = ' + (responseJSON || 'null') + ';');
 		if (this.latestResponse.stat == 'ok') {
 
 			this.nPages = this.latestResponse.photos.pages;
@@ -277,7 +278,7 @@ oc.ImageManager = CFBase.extend({
 			this.highlightPreviewedImageToken(false);
 		}
 		var poppet = this;
-		jQuery('#oc_image_preview img.oc_preview_img').load(function() { poppet.previewImageLoaded(image) });
+		jQuery('#oc_image_preview img.oc_preview_img').load(function() { poppet.previewImageLoaded(image); });
 		this.previewImageLoadingTimer = setTimeout(
 			function() {
 				jQuery('#oc_close_preview_button').addClass('loading');

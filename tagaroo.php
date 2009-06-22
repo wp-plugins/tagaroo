@@ -3,7 +3,7 @@
 Plugin Name: tagaroo
 Plugin URI: http://tagaroo.opencalais.com
 Description: Find and suggest tags and photos (from Flickr) for your content. Integrates with the Calais service.
-Version: 1.2.1
+Version: 1.3
 Author: Crowd Favorite and Reuters
 Author URI: http://crowdfavorite.com
 */
@@ -12,6 +12,7 @@ define(OC_WP_GTE_23, version_compare($wp_version, '2.3', '>='));
 define(OC_WP_GTE_25, version_compare($wp_version, '2.5', '>='));
 define(OC_WP_GTE_26, version_compare($wp_version, '2.6', '>='));
 define(OC_WP_GTE_27, version_compare($wp_version, '2.7', '>='));
+define(OC_WP_GTE_28, version_compare($wp_version, '2.8', '>='));
 
 define(OC_DRAFT_API_KEY, 'mdbtyu4ku286uhpakuj48dgj');
 define(FLICKR_API_KEY, 'f3745df3c6537073c523dc6d06751250');
@@ -38,6 +39,10 @@ $oc_key_entered = false;
 $oc_api_key = get_option('oc_api_key');
 if ($oc_api_key && !empty($oc_api_key)) {
 	$oc_key_entered = true;
+}
+
+if (!$oc_relevance_minimum = get_option('oc_relevance_minimum')) {
+	$oc_relevance_minimum = 'any';	
 }
 
 if (!$oc_key_entered) {
@@ -87,7 +92,7 @@ function oc_api_param_xml($req_id = null, $metadata = '', $allow_distribution = 
 	$submitter = get_bloginfo('home');
 	return '
 		<c:params xmlns:c="http://s.opencalais.com/1/pred/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
-			<c:processingDirectives c:contentType="text/html" c:outputFormat="xml/rdf"></c:processingDirectives>
+			<c:processingDirectives c:contentType="text/html" c:outputFormat="xml/rdf" c:enableMetadataType="SocialTags"></c:processingDirectives>
 			<c:userDirectives c:allowDistribution="'.($allow_distribution ? 'true' : 'false').'" c:allowSearch="'.($allow_search ? 'true' : 'false').'" c:externalID="'.$req_id.'" c:submitter="'.$submitter.'">
 			</c:userDirectives>
 			<c:externalMetadata>
@@ -116,7 +121,7 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 
 	$snoop = new Snoopy;
 	$snoop->read_timeout = 5;
-	$success = $snoop->submit('http://api1.opencalais.com/enlighten/rest', array(
+	$success = @$snoop->submit('http://api.opencalais.com/enlighten/rest/', array(
 		'licenseID' => $key,
 		'content' => $content,
 		'paramsXML' => $paramsXML
@@ -137,6 +142,7 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 				'error' => $matches[1]
 			);
 		}
+		//@file_put_contents(dirname(__FILE__).'/output.txt', $snoop->results);
 		return array(
 			'success' => true,
 			'content' => $snoop->results
@@ -145,7 +151,7 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 	else {
 		return array(
 			'success' => false,
-			'error' => 'Could not contact OpenCalais.'
+			'error' => 'Could not contact OpenCalais: "'.$snoop->error.'"'
 		);
 	}
 }
@@ -156,7 +162,7 @@ function oc_get_flickr_license_info() {
 		require_once(ABSPATH.WPINC.'/class-snoopy.php');
 		$snoop = new Snoopy;
 		$snoop->read_timeout = 5;
-		$success = $snoop->submit('http://api.flickr.com/services/rest', array(
+		$success = @$snoop->submit('http://api.flickr.com/services/rest', array(
 			'method' => 'flickr.photos.licenses.getInfo',
 			'api_key' => FLICKR_API_KEY,
 			'format' => 'json',
@@ -256,6 +262,10 @@ function oc_request_handler() {
 						'allow_distribution' => ($allow_dist ? 'yes' : 'no')
 					));
 
+					if (isset($_POST['oc_relevance_minimum'])) {
+						update_option('oc_relevance_minimum', $_POST['oc_relevance_minimum']);
+					}
+
 					if ($get_q == '') {
 						$get_q .= '&updated=true'.($key_changed ? '&oc_key_changed=true' : '');
 					}
@@ -297,7 +307,7 @@ function oc_request_handler() {
 	if (!empty($_GET['oc_action'])) {
 		switch ($_GET['oc_action']) {
 			case 'admin_js':
-				global $oc_config;
+				global $oc_config, $oc_relevance_minimum;
 				header("Content-type: text/javascript");
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/offset.js');
 				if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
@@ -305,19 +315,24 @@ function oc_request_handler() {
 				}
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFCore.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCCore.js');
+				print('oc.wp_gte_28 = '.(OC_WP_GTE_28 ? 'true' : 'false').';');
 				print('oc.wp_gte_27 = '.(OC_WP_GTE_27 ? 'true' : 'false').';');
 				print('oc.wp_gte_25 = '.(OC_WP_GTE_25 ? 'true' : 'false').';');
 				print('oc.wp_gte_23 = '.(OC_WP_GTE_23 ? 'true' : 'false').';');
+				print('oc.minimumRelevance = \''.$oc_relevance_minimum.'\';');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/xmlObjectifier.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenManager.js');				
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/json2.js');
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenManager.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenBox.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFToken.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTextToken.js');
 
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTagSource.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEventFact.js');				
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEventFact.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEntity.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEntityManager.js');				
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCDocCat.js');
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCSocialTag.js');
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCArtifactManager.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCArtifactType.js');
 				
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTag.js');
@@ -416,11 +431,14 @@ function oc_get_control_wrapper($which, $id = '', $title = '') {
 function oc_render_tag_controls() {
 	global $oc_config;
 	global $post;
+	$status_in_controls = (OC_WP_GTE_27 ? '<div class="oc_status" id="oc_status"><div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a></div>' : '');
+	$status_in_header = (OC_WP_GTE_27 ? '' : '<div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a>');
 	$meta = get_post_meta($post->ID, 'oc_metadata', true);
 	print('
-		'.oc_get_control_wrapper('head', 'oc_tag_controls', 'tagaroo Tags<div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a>').'
+		'.oc_get_control_wrapper('head', 'oc_tag_controls', 'tagaroo Tags'.$status_in_header).'
 				<div class="oc_tag_notification" id="oc_api_notifications"></div>
-				<input id="oc_metadata" type="hidden" value="'.$meta.'" name="oc_metadata"/>
+				'.$status_in_controls.'
+				<textarea id="oc_metadata" type="hidden" name="oc_metadata">'.$meta.'</textarea>
 				<input id="newtag" type="hidden" value=""/>
 			
 				<div id="oc_suggested_tags_wrapper">
@@ -516,19 +534,29 @@ function oc_get_css($which) {
 	background:url('.OC_HTTP_PATH.'/images/loading-white.gif) 0 50% no-repeat;
 	padding:8px 28px;
 }
-#oc_tag_searching_indicator {
-	background:url('.OC_HTTP_PATH.'/images/'.((OC_WP_GTE_23 && !OC_WP_GTE_25) ? 'loading-dblue.gif' : 'loading.gif').') center right no-repeat;
+#oc_tag_searching_indicator,
+#oc_suggest_tags_link {
 	position:absolute;
-	width:200px;
+	top: '.(OC_WP_GTE_27 ? '4px' : '7px').';
 	height:16px;
-	right: 6px;
-	top: 7px;
+	line-height:18px;
 	display:none;
 	text-align: right;
-	padding: 3px 25px 0 0;
-	color: #909090;
 	font-size: 11px;
 	font-weight: normal;
+} 
+#oc_tag_searching_indicator {
+	background:url('.OC_HTTP_PATH.'/images/'.(OC_WP_GTE_27 ? 'loading-trans.gif' : 'loading.gif').') center right no-repeat;	
+	width:200px;
+	right: 6px;
+	padding: 3px 25px 0 0;
+	color: #909090;
+}
+#oc_suggest_tags_link {
+	width:100px;
+	right: 6px;
+	top: '.(OC_WP_GTE_27 ? '4px' : '7px').';
+	padding: 3px 1px 0 0;
 }
 #oc_close_preview_button {
 	position: absolute;
@@ -538,6 +566,9 @@ function oc_get_css($which) {
 	top: 7px;
 	right: 5px;
 	cursor: pointer;
+}
+#oc_metadata {
+	display:none;
 }
 #oc_close_preview_button.loading {
 	background: url('.OC_HTTP_PATH.'/images/loading-black.gif) no-repeat;	
@@ -608,6 +639,9 @@ function oc_get_css($which) {
 #oc_preview_insert_sizes li.medium {
 	background: url('.OC_HTTP_PATH.'/images/img-size-500.png);
 }
+.socialtag .token-text {
+	font-weight:bold;
+}
 
 			');
 			return 	'
@@ -634,7 +668,7 @@ function oc_menu_items() {
 add_action('admin_menu', 'oc_menu_items');
 
 function oc_options_form() {
-	global $oc_api_key, $oc_key_entered;
+	global $oc_api_key, $oc_key_entered, $oc_relevance_minimum;
 	$error = '';
 	
 	$api_msg = '';
@@ -701,6 +735,24 @@ function oc_options_form() {
 						</tr>
 					</tbody>
 				</table>
+				
+				<table class="form-table">
+					<tbody>
+						<tr>
+							<th scope="row">Suggest tags with:</th>
+							<td>
+								<input id="oc_relevance_any" type="radio" name="oc_relevance_minimum" value="any" '.($oc_relevance_minimum == 'any' ? 'checked="checked"' : '').'/>
+								<label for="oc_relevance_any">Any relevance rating</label><br/>
+								<input id="oc_relevance_medium" type="radio" name="oc_relevance_minimum" value="medium" '.($oc_relevance_minimum == 'medium' ? 'checked="checked"' : '').'/>
+								<label for="oc_relevance_medium">Medium or higher relevance rating</label><br/>
+								<input id="oc_relevance_high" type="radio" name="oc_relevance_minimum" value="high" '.($oc_relevance_minimum == 'high' ? 'checked="checked"' : '').'/>
+								<label for="oc_relevance_high">Only high relevance ratings</label><br/>
+								<p>'./*(Explanatory copy goes here.)*/'</p>
+							</td>
+						</tr>
+					</tbody>
+				</table>
+
 
 				<p class="submit">
 					<input type="hidden" name="oc_action" value="update_api_key" />
@@ -722,7 +774,7 @@ function oc_admin_head() {
 			<![endif]-->
 		');
 		if (OC_WP_GTE_27) {
-			add_meta_box('oc_tag_controls', 'tagaroo Tags<div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a>', 'oc_render_tag_controls', 'post', 'normal', 'high');
+			add_meta_box('oc_tag_controls', 'tagaroo Tags', 'oc_render_tag_controls', 'post', 'normal', 'high');
 			add_meta_box('oc_image_controls', 'tagaroo Images', 'oc_render_image_controls', 'post', 'normal', 'high');
 		}
 	}
