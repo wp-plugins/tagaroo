@@ -22,11 +22,11 @@ Tagaroo gives you an integration between your WordPress blog and the Calais web 
 
 == Usage ==
 
-While writing blog posts, tagaroo will request appropriate tags and photos for you. You can also click the "Suggest Tags" link at any time to get tags.
+When writing blog posts, click the "Suggest Tags" link at any time to fetch appropriate tags and photos for the post.
 
-You can enter your own tags, or use tags suggested by tagaroo. You can drag tags from the suggested tags list to the Post Tags area, or click on them to add them.
+With 1.4 we have added the functionality where you can select a paragraph or part of the post and click the "Suggest Tags" to fetch fetch appropriate tags and photos for only selected text. You can enter your own tags, or use tags suggested by Tagaroo. You can drag tags from the suggested tags list to the Post Tags area, or click on them to add them.
 
-You can also drag tags up to the tagaroo images list and tagaroo will search Flickr for photos for that tag. You can sort the returned photos by interestingness, date take and date posted.
+You can also drag tags up to the Tagaroo images list and Tagaroo will search Flickr for photos for that tag. You can sort the returned photos by interestingness, date take and date posted.
 
 Clicking on a photo will show you a larger preview of the photo, and you can choose the size of the photo you want to add to your post.
 
