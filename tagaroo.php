@@ -3,7 +3,7 @@
 Plugin Name: tagaroo
 Plugin URI: http://tagaroo.opencalais.com
 Description: Find and suggest tags and photos (from Flickr) for your content. Integrates with the Calais service.
-Version: 1.3
+Version: 1.4
 Author: Crowd Favorite and Reuters
 Author URI: http://crowdfavorite.com
 */
@@ -44,6 +44,11 @@ if ($oc_api_key && !empty($oc_api_key)) {
 if (!$oc_relevance_minimum = get_option('oc_relevance_minimum')) {
 	$oc_relevance_minimum = 'any';	
 }
+
+if (!$oc_auto_fetch = get_option('oc_auto_fetch')) {
+	$oc_auto_fetch = 'yes';
+}
+
 
 if (!$oc_key_entered) {
 	add_action('admin_notices', 'oc_warn_no_key_edit_page');
@@ -119,6 +124,22 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 		$key = $oc_api_key;
 	}
 
+	$done = false;
+	$tries = 0;
+	do {
+		$tries++;
+		$response = oc_do_ping_oc_api($key, $content, $paramsXML);
+		if($response['errortype'] == 3 && $tries <= 3) {
+			continue;
+		}
+		$done = true;
+	}
+	while(!$done);
+
+	return $response;
+}
+
+function oc_do_ping_oc_api($key, $content, $paramsXML) {
 	$snoop = new Snoopy;
 	$snoop->read_timeout = 5;
 	$success = @$snoop->submit('http://api.opencalais.com/enlighten/rest/', array(
@@ -131,29 +152,33 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 		if (strpos($snoop->results, 'Invalid request format - the request has missing or invalid parameters') !== false) {
 			return array(
 				'success' => false,
-				'error' => 'API Key Invalid.'
+				'error' => 'API Key Invalid.',
+				'errortype' => 1
 			);
 		}
 		$matches = array();
-		$error_match = preg_match('/<Error Method="ProcessText"><Exception>([^<]*)<\/Exception><\/Error>/', html_entity_decode($snoop->results), $matches);
+		$error_match = preg_match('/<Error Method="ProcessText"(.*?)><Exception>([^<]*)<\/Exception><\/Error>/', html_entity_decode($snoop->results), $matches);
 		if ($error_match) {
 			return array(
 				'success' => false,
-				'error' => $matches[1]
+				'error' => $matches[2],
+				'errortype' => 2
 			);
 		}
 		//@file_put_contents(dirname(__FILE__).'/output.txt', $snoop->results);
 		return array(
 			'success' => true,
-			'content' => $snoop->results
+			'content' => $snoop->results,
+			'errortype' => 0
 		);
 	}
 	else {
 		return array(
 			'success' => false,
-			'error' => 'Could not contact OpenCalais: "'.$snoop->error.'"'
+			'error' => 'Could not contact OpenCalais: "'.$snoop->error.'"',
+			'errortype' => 3
 		);
-	}
+	}	
 }
 
 function oc_get_flickr_license_info() {
@@ -266,6 +291,14 @@ function oc_request_handler() {
 						update_option('oc_relevance_minimum', $_POST['oc_relevance_minimum']);
 					}
 
+					if (isset($_POST['oc_auto_fetch']) && $_POST['oc_auto_fetch'] == 'on') {
+						update_option('oc_auto_fetch', 'yes');
+					}
+					else {
+						update_option('oc_auto_fetch', 'no');
+					}
+
+
 					if ($get_q == '') {
 						$get_q .= '&updated=true'.($key_changed ? '&oc_key_changed=true' : '');
 					}
@@ -307,7 +340,7 @@ function oc_request_handler() {
 	if (!empty($_GET['oc_action'])) {
 		switch ($_GET['oc_action']) {
 			case 'admin_js':
-				global $oc_config, $oc_relevance_minimum;
+				global $oc_config, $oc_relevance_minimum, $oc_auto_fetch;
 				header("Content-type: text/javascript");
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/offset.js');
 				if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
@@ -320,6 +353,7 @@ function oc_request_handler() {
 				print('oc.wp_gte_25 = '.(OC_WP_GTE_25 ? 'true' : 'false').';');
 				print('oc.wp_gte_23 = '.(OC_WP_GTE_23 ? 'true' : 'false').';');
 				print('oc.minimumRelevance = \''.$oc_relevance_minimum.'\';');
+				print('oc.autoFetch = '.($oc_auto_fetch == 'yes' ? 'true' : 'false').';');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/xmlObjectifier.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/json2.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenManager.js');
@@ -342,7 +376,7 @@ function oc_request_handler() {
 				
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImage.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageManager.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageToken.js');				
+				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageToken.js');
 				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageParadeBox.js');
 
 				$licensesJSON = oc_get_flickr_license_info();
@@ -431,8 +465,16 @@ function oc_get_control_wrapper($which, $id = '', $title = '') {
 function oc_render_tag_controls() {
 	global $oc_config;
 	global $post;
-	$status_in_controls = (OC_WP_GTE_27 ? '<div class="oc_status" id="oc_status"><div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a></div>' : '');
-	$status_in_header = (OC_WP_GTE_27 ? '' : '<div id="oc_tag_searching_indicator">Finding tags...</div><a href="#" id="oc_suggest_tags_link">Suggest Tags</a>');
+	$status_in_controls = (OC_WP_GTE_27 ? '
+		<div class="oc_status" id="oc_status">
+			<div id="oc_tag_searching_indicator">Finding tags&hellip;</div>
+			<a href="#" id="oc_suggest_tags_link">Suggest Tags</a>
+		</div>
+	' : '');
+	$status_in_header = (OC_WP_GTE_27 ? '' : '
+		<div id="oc_tag_searching_indicator">Finding tags&hellip;</div>
+		<a href="#" id="oc_suggest_tags_link">Suggest Tags</a>
+	');
 	$meta = get_post_meta($post->ID, 'oc_metadata', true);
 	print('
 		'.oc_get_control_wrapper('head', 'oc_tag_controls', 'tagaroo Tags'.$status_in_header).'
@@ -440,9 +482,9 @@ function oc_render_tag_controls() {
 				'.$status_in_controls.'
 				<textarea id="oc_metadata" type="hidden" name="oc_metadata">'.$meta.'</textarea>
 				<input id="newtag" type="hidden" value=""/>
-			
+
 				<div id="oc_suggested_tags_wrapper">
-					<div class="clear"></div>				
+					<div class="clear"></div>
 				</div>
 
 				<div id="oc_current_tags_wrapper">
@@ -539,7 +581,6 @@ function oc_get_css($which) {
 	position:absolute;
 	top: '.(OC_WP_GTE_27 ? '4px' : '7px').';
 	height:16px;
-	line-height:18px;
 	display:none;
 	text-align: right;
 	font-size: 11px;
@@ -551,12 +592,24 @@ function oc_get_css($which) {
 	right: 6px;
 	padding: 3px 25px 0 0;
 	color: #909090;
+	line-height:12px;
 }
 #oc_suggest_tags_link {
 	width:100px;
 	right: 6px;
-	top: '.(OC_WP_GTE_27 ? '4px' : '7px').';
-	padding: 3px 1px 0 0;
+	top: '.(OC_WP_GTE_27 ? '3px' : '6px').';
+	padding: 1px 8px 1px 2px;
+	line-height:15px;
+	background: white url('.OC_HTTP_PATH.'/images/Calais-icon_16x16.jpg) 3px 50% no-repeat;
+	border:1px solid #bbb;
+	text-decoration:none;
+}
+#oc_suggest_tags_link a, 
+#oc_suggest_tags_link a:visited {
+	color: #21759B;
+}
+#oc_suggest_tags_link a:hover {
+	color:#F6880C;
 }
 #oc_close_preview_button {
 	position: absolute;
@@ -668,7 +721,7 @@ function oc_menu_items() {
 add_action('admin_menu', 'oc_menu_items');
 
 function oc_options_form() {
-	global $oc_api_key, $oc_key_entered, $oc_relevance_minimum;
+	global $oc_api_key, $oc_key_entered, $oc_relevance_minimum, $oc_auto_fetch;
 	$error = '';
 	
 	$api_msg = '';
@@ -720,7 +773,7 @@ function oc_options_form() {
 						</tr>
 					</tbody>
 				</table>
-	
+
 				<table class="form-table">
 					<tbody>
 						<tr>
@@ -735,7 +788,7 @@ function oc_options_form() {
 						</tr>
 					</tbody>
 				</table>
-				
+
 				<table class="form-table">
 					<tbody>
 						<tr>
@@ -753,6 +806,16 @@ function oc_options_form() {
 					</tbody>
 				</table>
 
+				<table class="form-table">
+					<tbody>
+						<tr>
+							<th scope="row">Auto-fetch tags?</th>
+							<td>
+								<input type="checkbox" name="oc_auto_fetch" '.($oc_auto_fetch == 'yes' ? 'checked="checked"' : '').' /><br/>
+							</td>
+						</tr>
+					</tbody>
+				</table>
 
 				<p class="submit">
 					<input type="hidden" name="oc_action" value="update_api_key" />

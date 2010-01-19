@@ -1,9 +1,9 @@
 === tagaroo ===
 Tags: tag, tags, tagging, semantic data, photo, photos, pictures, Flickr, calais
-Contributors: alexkingorg
+Contributors: alexkingorg, crowdfavorite
 Requires at least: 2.5
-Tested up to: 2.8.1
-Stable tag: 1.3
+Tested up to: 2.9.1
+Stable tag: 1.4
 
 Use tagaroo to get semantic data to use as tags and photo for your posts.
 
@@ -24,7 +24,9 @@ Tagaroo gives you an integration between your WordPress blog and the Calais web 
 
 When writing blog posts, click the "Suggest Tags" link at any time to fetch appropriate tags and photos for the post.
 
-With 1.4 we have added the functionality where you can select a paragraph or part of the post and click the "Suggest Tags" to fetch fetch appropriate tags and photos for only selected text. You can enter your own tags, or use tags suggested by Tagaroo. You can drag tags from the suggested tags list to the Post Tags area, or click on them to add them.
+With 1.4 we have added the functionality where you can select a paragraph or part of the post and click the 'Suggest Tags' to fetch fetch appropriate tags and photos for only selected text.
+
+You can enter your own tags, or use tags suggested by Tagaroo. You can drag tags from the suggested tags list to the Post Tags area, or click on them to add them.
 
 You can also drag tags up to the Tagaroo images list and Tagaroo will search Flickr for photos for that tag. You can sort the returned photos by interestingness, date take and date posted.
 
@@ -42,6 +44,10 @@ New names are
 - Unify some of the old ones, for example now we will have 'M&A' for 'Acquisition' and 'Merger' or 'Judicial Event' for 'Indictment', 'Trial' and 'Arrest'.
 
 Old posts tagged with previous names will not be affected at all with this change. However, if you would like to use new naming for your old posts you just need to edit the post and save it with new names.
+
+= 1.4 =
+
+* Added functionality where you can select a paragraph or part of the post and click the 'Suggest Tags' to fetch fetch appropriate tags and photos for only selected text
 
 == Known Issues ==
 

@@ -1,6 +1,6 @@
 
 oc.rte = null;
-oc.scanOnIdle = true;
+oc.scanOnIdle = oc.autoFetch;
 oc.cachedPostContent = '<br>';
 oc.lastResponse = null;
 oc.docLangWorkaround = true;
@@ -17,24 +17,28 @@ oc.getFormatVersion = function() {
 };
 
 oc.showTagSearchingIndicator = function() {
+	if (oc.postHasSelection()) {
+		jQuery('#oc_tag_searching_indicator').html('Finding tags for selection&hellip;');
+	}
 	jQuery('#oc_api_notifications').html('').hide();
 	jQuery('#oc_suggest_tags_link').hide();
 	jQuery('#oc_tag_searching_indicator').show();
 };
 oc.hideTagSearchingIndicator = function() {
 	jQuery('#oc_suggest_tags_link').show();
-	jQuery('#oc_tag_searching_indicator').hide();
+	jQuery('#oc_tag_searching_indicator').hide().html('Finding tags&hellip;');
 };
 
 oc.pingCalais = function() {
-	var text = oc.getPostText();
-
+	var selection = oc.getSelectedPostText();
+	var text = selection.length ? selection : oc.getPostText();
+	
 	if (oc.docLangWorkaround && text.length <= 64 ) {
 		oc.tagManager.deleteUnusedSuggestedTags();
 		jQuery('#oc_api_notifications').html('tagaroo needs at least 64 characters to start searching for tags.').show();
 		return;
 	}
-	
+
 	oc.showTagSearchingIndicator();
 	jQuery.ajax({
 		type: 'POST',
@@ -174,7 +178,7 @@ oc.tickleIdleTimer = function() {
 	if(oc.idleTimer) {
 		clearTimeout(oc.idleTimer);
 	}
-	oc.idleTimer = setTimeout(oc.idleTimeout, 1000);	
+	oc.idleTimer = setTimeout(oc.idleTimeout, 1000);
 };
 
 oc.firstScan = true;
@@ -201,13 +205,45 @@ oc.postIsDirty = function(updateCache) {
 };
 
 oc.getRTE = function() {
+	// we used to be notified when the rte was hidden. as of 2.8.4 (at least), we're not.
+	if (jQuery('textarea#content:visible').size()) {
+		return null;
+	}
 	return oc.rte;
+};
+
+oc.postHasSelection = function() {
+	return (oc.getSelectedPostText().length > 0);
+};
+
+oc.getSelectedPostText = function() {
+	var rte = oc.getRTE();
+	if (rte !== null) {
+		return selectedHTML = rte.selection.getContent({format : 'html'});
+	}
+	else if (jQuery('#content').size() > 0) {
+		var jqTextarea = jQuery('#content');
+		var selectedText = '';
+		if ('getSelection' in window) {
+			// moz, webkit
+			selectedText = jqTextarea.val().substring(jqTextarea[0].selectionStart, jqTextarea[0].selectionEnd);
+		}
+		else {
+			// IE
+			if (document.selection.type == 'Text') {
+				var range = document.selection.createRange();
+				selectedText = range.htmlText;
+			}
+		}
+		return selectedText;
+	}
+	return '';
 };
 
 oc.getPostText = function() {
 	var rte = oc.getRTE();
 	if (rte !== null) {
-		return rte.getBody().innerHTML;
+		return rte.getContent({format : 'html'});
 	}
 	else if (jQuery('#content').size() > 0) {
 		return jQuery('#content')[0].value;
@@ -447,6 +483,9 @@ oc.initPostEditPage = function() {
 		return false;
 	});
 	jQuery('#oc_suggest_tags_link').click(function() { oc.pingCalais(); return false; });
+	if (!oc.scanOnIdle) {
+		jQuery('#oc_suggest_tags_link').show();
+	}
 	jQuery('#content').keypress(function(e) {
 		oc.tickleIdleTimer();
 	});

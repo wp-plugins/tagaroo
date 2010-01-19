@@ -15,7 +15,7 @@ if (!window.ocMCE3PluginAdded) {
 					ed.onInit.add(this.initInstance);
 					ed.onRemove.add(this.removeInstance);
 					ed.onChange.add(this.onChange);
-					ed.onEvent.add(this.handleEvent);				
+					ed.onKeyUp.add(this.handleKeyUp);
 				}
 			},
 
@@ -44,7 +44,7 @@ if (!window.ocMCE3PluginAdded) {
 			onChange: function(inst) {
 				oc.tickleIdleTimer();
 			},
-			handleEvent: function(event) {
+			handleKeyUp: function(editor, e) {
 				oc.tickleIdleTimer();
 				return true;
 			},
