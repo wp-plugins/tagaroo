@@ -10,7 +10,8 @@ jQuery.fn.offset = function() {
 		    offsetChild  = elem,
 		    offsetParent = elem.offsetParent, 
 		    doc          = elem.ownerDocument,
-		    safari2      = safari && parseInt(version) < 522 && !/adobeair/i.test(userAgent),
+		    //safari2      = (typeof safari != "undefined" && safari && parseInt(version) < 522 && !/adobeair/i.test(userAgent)),
+			safari2		 = false,
 		    fixed        = jQuery.css(elem, "position") == "fixed";
 	
 		// haxie for deprecation of safari property

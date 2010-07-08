@@ -3,7 +3,7 @@ Tags: tag, tags, tagging, semantic data, photo, photos, pictures, Flickr, calais
 Contributors: alexkingorg, crowdfavorite
 Requires at least: 2.5
 Tested up to: 3.0
-Stable tag: 1.4.1
+Stable tag: 1.4.2
 
 Use tagaroo to get semantic data to use as tags and photo for your posts.
 
@@ -52,6 +52,10 @@ Old posts tagged with previous names will not be affected at all with this chang
 = 1.4.1 =
 
 * Fixed compatibility issues with newer versions of jQuery delivered with WordPress 3.0.
+
+= 1.4.2 =
+
+* Additional javascript fix.
 
 == Known Issues ==
 
