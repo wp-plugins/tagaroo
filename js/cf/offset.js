@@ -1,6 +1,7 @@
 // The Offset Method
 // Originally By Brandon Aaron, part of the Dimension Plugin
 // http://jquery.com/plugins/project/dimensions
+// Modified 2010-07-06 for compat with newer versions of jQuery
 jQuery.fn.offset = function() {
 	var left = 0, top = 0, elem = this[0], results;
 	
@@ -11,6 +12,15 @@ jQuery.fn.offset = function() {
 		    doc          = elem.ownerDocument,
 		    safari2      = safari && parseInt(version) < 522 && !/adobeair/i.test(userAgent),
 		    fixed        = jQuery.css(elem, "position") == "fixed";
+	
+		// haxie for deprecation of safari property
+		// if we have time we should deprecate the use of this entire method in favor of newer sizing implementations in jQuery
+		if (typeof safari != "undefined") {
+			safari2 = safari && parseInt(version) < 522 && !/adobeair/i.test(userAgent)
+		}
+		else if (typeof webkit != "undefined") {
+			safari2 = webkit && parseInt(version) < 522 && !/adobeair/i.test(userAgent)
+		}
 	
 		// Use getBoundingClientRect if available
 		if ( elem.getBoundingClientRect ) {

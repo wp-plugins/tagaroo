@@ -486,7 +486,7 @@ oc.initPostEditPage = function() {
 	if (!oc.scanOnIdle) {
 		jQuery('#oc_suggest_tags_link').show();
 	}
-	jQuery('#content').keypress(function(e) {
+	jQuery('#content').keyup(function(e) {
 		oc.tickleIdleTimer();
 	});
 	jQuery(window).resize(function() {
