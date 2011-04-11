@@ -375,6 +375,11 @@ oc.initPostEditPage = function() {
 	// remove wp's tag control
 	var wpTagList = (oc.wp_gte_28 ? jQuery('#tagsdiv-post_tag .the-tags').val() : jQuery('#tags-input').val());
 
+	// if for whatever reason we don't find a valid tag input then bail
+	if (wpTagList == undefined) {
+		return false;
+	}
+
 	if (oc.wp_gte_23 && !oc.wp_gte_25) {
 		jQuery('#tagdiv').remove();
 		jQuery('#grabit').prepend(jQuery('#oc_dbx'));

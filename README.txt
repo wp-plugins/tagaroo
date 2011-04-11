@@ -2,8 +2,8 @@
 Tags: tag, tags, tagging, semantic data, photo, photos, pictures, Flickr, calais
 Contributors: alexkingorg, crowdfavorite
 Requires at least: 2.5
-Tested up to: 3.0
-Stable tag: 1.4.2
+Tested up to: 3.1
+Stable tag: 1.4.3
 
 Use tagaroo to get semantic data to use as tags and photo for your posts.
 
@@ -34,6 +34,22 @@ Clicking on a photo will show you a larger preview of the photo, and you can cho
 
 == Changelog ==
 
+= 1.4.3 = 
+
+* JavaScript fix.
+
+= 1.4.2 =
+
+* Additional JavaScript fix.
+
+= 1.4.1 =
+
+* Fixed compatibility issues with newer versions of jQuery delivered with WordPress 3.0.
+
+= 1.4 =
+
+* Added functionality where you can select a paragraph or part of the post and click the 'Suggest Tags' to fetch fetch appropriate tags and photos for only selected text
+
 = 1.3 =
 
 Tagaroo 1.3 will now identify 50 event types (up from 33 in the last version). We have made minor changes to the suggested tag names for some events. 
@@ -44,18 +60,6 @@ New names are
 - Unify some of the old ones, for example now we will have 'M&A' for 'Acquisition' and 'Merger' or 'Judicial Event' for 'Indictment', 'Trial' and 'Arrest'.
 
 Old posts tagged with previous names will not be affected at all with this change. However, if you would like to use new naming for your old posts you just need to edit the post and save it with new names.
-
-= 1.4 =
-
-* Added functionality where you can select a paragraph or part of the post and click the 'Suggest Tags' to fetch fetch appropriate tags and photos for only selected text
-
-= 1.4.1 =
-
-* Fixed compatibility issues with newer versions of jQuery delivered with WordPress 3.0.
-
-= 1.4.2 =
-
-* Additional javascript fix.
 
 == Known Issues ==
 
