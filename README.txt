@@ -1,9 +1,9 @@
 === tagaroo ===
 Tags: tag, tags, tagging, semantic data, photo, photos, pictures, Flickr, calais
 Contributors: alexkingorg, crowdfavorite
-Requires at least: 2.5
-Tested up to: 3.1
-Stable tag: 1.4.3
+Requires at least: 2.7
+Tested up to: 3.3
+Stable tag: 1.4.4
 
 Use tagaroo to get semantic data to use as tags and photo for your posts.
 
@@ -33,6 +33,11 @@ You can also drag tags up to the Tagaroo images list and Tagaroo will search Fli
 Clicking on a photo will show you a larger preview of the photo, and you can choose the size of the photo you want to add to your post.
 
 == Changelog ==
+
+= 1.4.4 =
+
+* Replaced the class-snoopy calls with wp_remote_post().
+* Tested compatibility up to WordPress 3.3.
 
 = 1.4.3 = 
 

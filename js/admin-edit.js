@@ -62,6 +62,7 @@ oc.pingCalais = function() {
 			}
 			finally {
 				oc.hideTagSearchingIndicator();
+				oc.handleFlickrError();
 			}
 		},
 		error: function() {
@@ -77,7 +78,18 @@ oc.handleCalaisError = function(error) {
 
 // we couldn't even reach our own server
 oc.handleAjaxFailure = function(requestObj, errorString, exception) {
-	jQuery('#oc_api_notifications').html('<span style="color:red;"><strong>Error talking to WordPress server.</strong>: ' + errorString);
+	jQuery('#oc_api_notifications').html('<span style="color:red;"><strong>Error talking to WordPress server</strong>: ' + errorString);
+};
+
+oc.handleFlickrError = function() {
+	jQuery('#oc_api_notifications').html('<span style="color:red;"><strong>Error finding images.</strong>');
+};
+
+oc.hideWorkingIndicator = function(responseString) {
+	if (responseString.substr(0, 14) == '{"stat":"fail"') {
+		jQuery('#oc_api_notifications').html('<span style="color:red;"><strong>Error searching for images. Try using less tags.</strong></span>');
+	}
+	jQuery('#oc_image_searching').hide();
 };
 
 

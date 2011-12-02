@@ -87,7 +87,7 @@ oc.ImageManager = CFBase.extend({
 				dataType: 'html',
 				data: { 
 					oc_action: 'api_proxy_flickr', 
-					tags: tagsArray.slice(0, 20).join(','),	// todo: figure out a good way to limit this
+					tags: tagsArray.slice(0, 5).join(','),	// todo: figure out a good way to limit this
 					per_page: this.imagesPerPage,
 					page: this.currentPage,
 					sort: this.sortMode + '-' + this.sortDirection
@@ -106,12 +106,12 @@ oc.ImageManager = CFBase.extend({
 						}
 					}
 					finally {
-						//oc.hideWorkingIndicator();
+						oc.hideWorkingIndicator(responseString);
 					}
 
 				},
-				error: function() { 
-					//oc.hideWorkingIndicator();			
+				error: function(responseString) {
+					oc.hideWorkingIndicator(responseString);
 					oc.handleAjaxFailure();
 				}
 			 });

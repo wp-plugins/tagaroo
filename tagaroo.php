@@ -1,30 +1,25 @@
-<?php 
+<?php
 /*
 Plugin Name: tagaroo
 Plugin URI: http://tagaroo.opencalais.com
 Description: Find and suggest tags and photos (from Flickr) for your content. Integrates with the Calais service.
-Version: 1.4.3
+Version: 1.4.4
 Author: Crowd Favorite and Reuters
 Author URI: http://crowdfavorite.com
 */
 
-define(OC_WP_GTE_23, version_compare($wp_version, '2.3', '>='));
-define(OC_WP_GTE_25, version_compare($wp_version, '2.5', '>='));
-define(OC_WP_GTE_26, version_compare($wp_version, '2.6', '>='));
-define(OC_WP_GTE_27, version_compare($wp_version, '2.7', '>='));
-define(OC_WP_GTE_28, version_compare($wp_version, '2.8', '>='));
+define('OC_WP_GTE_23', version_compare($wp_version, '2.3', '>='));
+define('OC_WP_GTE_25', version_compare($wp_version, '2.5', '>='));
+define('OC_WP_GTE_26', version_compare($wp_version, '2.6', '>='));
+define('OC_WP_GTE_27', version_compare($wp_version, '2.7', '>='));
+define('OC_WP_GTE_28', version_compare($wp_version, '2.8', '>='));
+define('OC_WP_GTE_33', version_compare($wp_version, '3.3', '>='));
 
-define(OC_DRAFT_API_KEY, 'mdbtyu4ku286uhpakuj48dgj');
-define(FLICKR_API_KEY, 'f3745df3c6537073c523dc6d06751250');
+define('OC_DRAFT_API_KEY', 'mdbtyu4ku286uhpakuj48dgj');
+define('FLICKR_API_KEY', 'f3745df3c6537073c523dc6d06751250');
 
-define(OC_HTTP_PATH, get_bloginfo('wpurl').'/wp-content/plugins/tagaroo');
-
-//register_activation_hook(__FILE__, 'oc_check_version');
-function oc_check_version() {
-	if (version_compare($wp_version, '2.3', '<')) {
-		trigger_error('tagaroo is supported on WordPress version 2.3 or higher.', E_USER_ERROR);
-	}
-}
+define('OC_HTTP_PATH', plugin_dir_url(__FILE__));
+define('OC_FILE_PATH', plugin_dir_path(__FILE__));
 
 function oc_agent_is_safari() {
 	static $is_safari;
@@ -42,23 +37,23 @@ if ($oc_api_key && !empty($oc_api_key)) {
 }
 
 if (!$oc_relevance_minimum = get_option('oc_relevance_minimum')) {
-	$oc_relevance_minimum = 'any';	
+	$oc_relevance_minimum = 'any';
 }
 
 if (!$oc_auto_fetch = get_option('oc_auto_fetch')) {
 	$oc_auto_fetch = 'yes';
 }
 
-
 if (!$oc_key_entered) {
 	add_action('admin_notices', 'oc_warn_no_key_edit_page');
 	add_action('after_plugin_row', 'oc_warn_no_key_plugin_page');
 }
+
 function oc_warn_no_key_plugin_page($plugin_file) {
 	if (strpos($plugin_file, 'tagaroo.php')) {
 		echo "<tr><td colspan='5' class='plugin-update'>";
 		echo '<strong>Note</strong>: tagaroo requires an API key to work. <a href="options-general.php?page=tagaroo.php">Set your API Key</a>.';
-		echo "</td></tr>";		
+		echo "</td></tr>";
 	}
 }
 
@@ -73,28 +68,12 @@ function oc_on_edit_page() {
 	return ($pagenow == 'post-new.php') || ($pagenow == 'post.php') || ($pagenow == 'tiny_mce_config.php');
 }
 
-wp_enqueue_script('jquery');
-if (!function_exists('wp_prototype_before_jquery')) {
-	function wp_prototype_before_jquery( $js_array ) {
-		if ( false === $jquery = array_search( 'jquery', $js_array ) )
-			return $js_array;
-		if ( false === $prototype = array_search( 'prototype', $js_array ) )
-			return $js_array;
-		if ( $prototype < $jquery )
-			return $js_array;
-		unset($js_array[$prototype]);
-		array_splice( $js_array, $jquery, 0, 'prototype' );
-		return $js_array;
-	}
-    add_filter( 'print_scripts_array', 'wp_prototype_before_jquery' );
-}
-
 function oc_api_param_xml($req_id = null, $metadata = '', $allow_distribution = false, $allow_search = false) {
 	if (!$req_id) {
 		$req_id = 'draft-'.time();
 	}
 
-	$submitter = get_bloginfo('home');
+	$submitter = home_url();
 	return '
 		<c:params xmlns:c="http://s.opencalais.com/1/pred/" xmlns:rdf="http://www.w3.org/1999/02/22-rdf-syntax-ns#">
 			<c:processingDirectives c:contentType="text/html" c:outputFormat="xml/rdf" c:enableMetadataType="SocialTags"></c:processingDirectives>
@@ -108,15 +87,15 @@ function oc_api_param_xml($req_id = null, $metadata = '', $allow_distribution = 
 	';
 }
 
-define(OC_DRAFT_CONTENT, 0);
-define(OC_FINAL_CONTENT, 1);
+define('OC_DRAFT_CONTENT', 0);
+define('OC_FINAL_CONTENT', 1);
 
 function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML = null) {
 	global $oc_api_key;
-	require_once(ABSPATH.WPINC.'/class-snoopy.php');
 	if (!$paramsXML) {
 		$paramsXML = oc_api_param_xml();
 	}
+
 	if ($content_status == OC_DRAFT_CONTENT) {
 		$key = OC_DRAFT_API_KEY;
 	}
@@ -129,72 +108,73 @@ function oc_ping_oc_api($content, $content_status = OC_DRAFT_CONTENT, $paramsXML
 	do {
 		$tries++;
 		$response = oc_do_ping_oc_api($key, $content, $paramsXML);
-		if($response['errortype'] == 3 && $tries <= 3) {
+		if ($response['errortype'] == 3 && $tries <= 3) {
 			continue;
 		}
 		$done = true;
 	}
-	while(!$done);
+	while (!$done);
 
 	return $response;
 }
 
 function oc_do_ping_oc_api($key, $content, $paramsXML) {
-	$snoop = new Snoopy;
-	$snoop->read_timeout = 5;
-	$success = @$snoop->submit('http://api.opencalais.com/enlighten/rest/', array(
-		'licenseID' => $key,
-		'content' => $content,
-		'paramsXML' => $paramsXML
-	));
-	
-	if ($success) {
-		if (strpos($snoop->results, 'Invalid request format - the request has missing or invalid parameters') !== false) {
+	if (!isset($_POST['publish']) && !isset($_POST['save'])) {
+		$result = wp_remote_post('http://api.opencalais.com/enlighten/rest/', array(
+			'body' => array(
+				'licenseID' => $key,
+				'content' => $content,
+				'paramsXML' => $paramsXML,
+			),
+		));
+
+		if (!is_wp_error($result) and isset($result['body'])) {
+			if (strpos($result['body'], 'Invalid request format - the request has missing or invalid parameters') !== false) {
+				return array(
+					'success' => false,
+					'error' => 'API Key Invalid.',
+					'errortype' => 1
+				);
+			}
+			$matches = array();
+			$error_match = preg_match('/<Error Method="ProcessText"(.*?)><Exception>([^<]*)<\/Exception><\/Error>/', html_entity_decode($result['body']), $matches);
+			if ($error_match) {
+				return array(
+					'success' => false,
+					'error' => $matches[2],
+					'errortype' => 2
+				);
+			}
+			//@file_put_contents(dirname(__FILE__).'/output.txt', $snoop->results);
 			return array(
-				'success' => false,
-				'error' => 'API Key Invalid.',
-				'errortype' => 1
+				'success' => true,
+				'content' => $result['body'],
+				'errortype' => 0
 			);
 		}
-		$matches = array();
-		$error_match = preg_match('/<Error Method="ProcessText"(.*?)><Exception>([^<]*)<\/Exception><\/Error>/', html_entity_decode($snoop->results), $matches);
-		if ($error_match) {
+		else {
 			return array(
 				'success' => false,
-				'error' => $matches[2],
-				'errortype' => 2
+				'error' => 'Could not contact OpenCalais: -- "'.print_r($result, true).'"',
+				'errortype' => 3
 			);
 		}
-		//@file_put_contents(dirname(__FILE__).'/output.txt', $snoop->results);
-		return array(
-			'success' => true,
-			'content' => $snoop->results,
-			'errortype' => 0
-		);
 	}
-	else {
-		return array(
-			'success' => false,
-			'error' => 'Could not contact OpenCalais: "'.$snoop->error.'"',
-			'errortype' => 3
-		);
-	}	
 }
 
 function oc_get_flickr_license_info() {
 	$info = get_option('oc_flickrLicenseInfo');
 	if (!$info) {
-		require_once(ABSPATH.WPINC.'/class-snoopy.php');
-		$snoop = new Snoopy;
-		$snoop->read_timeout = 5;
-		$success = @$snoop->submit('http://api.flickr.com/services/rest', array(
-			'method' => 'flickr.photos.licenses.getInfo',
-			'api_key' => FLICKR_API_KEY,
-			'format' => 'json',
-			'nojsoncallback' => 1
+		$result = wp_remote_post('http://api.flickr.com/services/rest', array(
+			'body' => array(
+				'method' => 'flickr.photos.licenses.getInfo',
+				'api_key' => FLICKR_API_KEY,
+				'format' => 'json',
+				'nojsoncallback' => 1,
+			),
 		));
-		if ($success) {
-			$info = $snoop->results;
+		if (!is_wp_error($result) and isset($result['body'])) {
+			$info = $result['body'];
 			update_option('oc_flickrLicenseInfo', $info);
 		}
 	}
@@ -202,27 +182,26 @@ function oc_get_flickr_license_info() {
 }
 
 function oc_ping_flickr_api($data) {
-	require_once(ABSPATH.WPINC.'/class-snoopy.php');
-	$snoop = new Snoopy;
-	$snoop->read_timeout = 5;
-	$success = $snoop->submit('http://api.flickr.com/services/rest', array(
-		'method' => 'flickr.photos.search',
-		'api_key' => FLICKR_API_KEY,
-		'tags' => $data['tags'],
-		'license' => '1,2,3,4,5,6',
-		'extras' => 'tags,license,owner_name',
-		'per_page' => $data['per_page'],
-		'page' => $data['page'],
-		'sort' => $data['sort'],
-		'format' => 'json',
-		'nojsoncallback' => 1
+	$result = wp_remote_post('http://api.flickr.com/services/rest', array(
+		'body' => array(
+			'method' => 'flickr.photos.search',
+			'api_key' => FLICKR_API_KEY,
+			'tags' => $data['tags'],
+			'license' => '1,2,3,4,5,6',
+			'extras' => 'tags,license,owner_name',
+			'per_page' => $data['per_page'],
+			'page' => $data['page'],
+			'sort' => $data['sort'],
+			'format' => 'json',
+			'nojsoncallback' => 1,
+		),
 	));
 	// to do: more error checking
-	if ($success) {
+	if (!is_wp_error($result) and isset($result['body'])) {
 		return array(
 			'success' => true,
-			'headers' => $snoop->headers,
-			'content' => $snoop->results
+			'headers' => $result['headers'],
+			'content' => $result['body']
 		);
 	}
 	else {
@@ -230,23 +209,27 @@ function oc_ping_flickr_api($data) {
 			'success' => false,
 			'error' => 'Could not contact Flickr.'
 		);
-	}	
+	}
 }
 
 function oc_request_handler() {
+	wp_enqueue_script('jquery');
+
 	if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
 		// copied from wp 2.5
-		if ( isset($_GET['action']) && 'ajax-tag-search' == $_GET['action'] ) {
+		if (isset($_GET['action']) && 'ajax-tag-search' == $_GET['action']) {
 			global $wpdb;
-			if ( !current_user_can( 'manage_categories' ) )
+			if (!current_user_can('manage_categories')) {
 				die('-1');
+			}
 
 			$s = $_GET['q']; // is this slashed already?
 
-			if ( strstr( $s, ',' ) )
-				die; // it's a multiple tag insert, we won't find anything
-			$results = $wpdb->get_col( "SELECT name FROM $wpdb->terms WHERE name LIKE ('%$s%')" );
-			echo join( $results, "\n" );
+			if (strstr($s, ',')) {
+				die;
+			} // it's a multiple tag insert, we won't find anything
+			$results = $wpdb->get_col("SELECT name FROM $wpdb->terms WHERE name LIKE ('%$s%')");
+			echo join($results, "\n");
 			die;
 		}
 	}
@@ -261,21 +244,23 @@ function oc_request_handler() {
 						if ($_POST['oc_api_key'] == '') {
 							update_option('oc_api_key', stripslashes($_POST['oc_api_key']));
 						}
-						else if ($_POST['oc_api_key'] != $oc_api_key){
-							$key_changed = true;
-							$oc_api_key = $_POST['oc_api_key'];
-							$test = oc_ping_oc_api('Wordpress Plugin API key test.', OC_FINAL_CONTENT);
-							if ($test['success']) {
-								$success = update_option('oc_api_key', stripslashes($_POST['oc_api_key']));
-								if (!$success) {
-									$get_q .= '&oc_update_failed=true';
+						else {
+							if ($_POST['oc_api_key'] != $oc_api_key) {
+								$key_changed = true;
+								$oc_api_key = $_POST['oc_api_key'];
+								$test = oc_ping_oc_api('Wordpress Plugin API key test.', OC_FINAL_CONTENT);
+								if ($test['success']) {
+									$success = update_option('oc_api_key', stripslashes($_POST['oc_api_key']));
+									if (!$success) {
+										$get_q .= '&oc_update_failed=true';
+									}
 								}
-							}
-							else {
-								if ($test['error'] == 'API Key Invalid.') {
-									$test['error'] = 'The API key '.$oc_api_key.' does not appear to be valid.';
+								else {
+									if ($test['error'] == 'API Key Invalid.') {
+										$test['error'] = 'The API key '.$oc_api_key.' does not appear to be valid.';
+									}
+									$get_q .= '&oc_api_test_failed='.urlencode($test['error']);
 								}
-								$get_q .= '&oc_api_test_failed='.urlencode($test['error']);
 							}
 						}
 					}
@@ -298,17 +283,17 @@ function oc_request_handler() {
 						update_option('oc_auto_fetch', 'no');
 					}
 
-
 					if ($get_q == '') {
 						$get_q .= '&updated=true'.($key_changed ? '&oc_key_changed=true' : '');
 					}
-					header('Location: '.get_bloginfo('wpurl').'/wp-admin/options-general.php?page=tagaroo.php'.$get_q);
+
+					header('Location: '.admin_url('options-general.php?page=tagaroo.php'.$get_q));
 					die();
 				}
 				else {
 					wp_die('You are not allowed to manage options.');
 				}
-			die();
+				die();
 			case 'api_proxy_oc':
 				$result = oc_ping_oc_api(stripslashes($_POST['text']));
 				if ($result['success'] == false) {
@@ -319,7 +304,7 @@ function oc_request_handler() {
 					header('Content-Type: text/xml; charset=utf-8');
 					echo $result['content'];
 				}
-			die();
+				die();
 			case 'api_proxy_flickr':
 				$result = oc_ping_flickr_api($_POST);
 				if ($result['success'] == false) {
@@ -334,7 +319,7 @@ function oc_request_handler() {
 					}
 					echo $result['content'];
 				}
-			die();
+				die();
 		}
 	}
 	if (!empty($_GET['oc_action'])) {
@@ -342,67 +327,65 @@ function oc_request_handler() {
 			case 'admin_js':
 				global $oc_config, $oc_relevance_minimum, $oc_auto_fetch;
 				header("Content-type: text/javascript");
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/offset.js');
+				require(OC_FILE_PATH.'/js/cf/offset.js');
 				if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
-					require(ABSPATH.PLUGINDIR.'/tagaroo/js/suggest.js');
+					require(OC_FILE_PATH.'/js/suggest.js');
 				}
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFCore.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCCore.js');
+				require(OC_FILE_PATH.'/js/cf/CFCore.js');
+				require(OC_FILE_PATH.'/js/OCCore.js');
 				print('oc.wp_gte_28 = '.(OC_WP_GTE_28 ? 'true' : 'false').';');
 				print('oc.wp_gte_27 = '.(OC_WP_GTE_27 ? 'true' : 'false').';');
 				print('oc.wp_gte_25 = '.(OC_WP_GTE_25 ? 'true' : 'false').';');
 				print('oc.wp_gte_23 = '.(OC_WP_GTE_23 ? 'true' : 'false').';');
 				print('oc.minimumRelevance = \''.$oc_relevance_minimum.'\';');
 				print('oc.autoFetch = '.($oc_auto_fetch == 'yes' ? 'true' : 'false').';');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/xmlObjectifier.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/json2.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenManager.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTokenBox.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFToken.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/cf/CFTextToken.js');
+				require(OC_FILE_PATH.'/js/xmlObjectifier.js');
+				require(OC_FILE_PATH.'/js/json2.js');
+				require(OC_FILE_PATH.'/js/cf/CFTokenManager.js');
+				require(OC_FILE_PATH.'/js/cf/CFTokenBox.js');
+				require(OC_FILE_PATH.'/js/cf/CFToken.js');
+				require(OC_FILE_PATH.'/js/cf/CFTextToken.js');
 
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTagSource.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEventFact.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCEntity.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCDocCat.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCSocialTag.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCArtifactManager.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCArtifactType.js');
-				
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTag.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTagManager.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTagToken.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCTagBox.js');
-				
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImage.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageManager.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageToken.js');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/OCImageParadeBox.js');
+				require(OC_FILE_PATH.'/js/OCTagSource.js');
+				require(OC_FILE_PATH.'/js/OCEventFact.js');
+				require(OC_FILE_PATH.'/js/OCEntity.js');
+				require(OC_FILE_PATH.'/js/OCDocCat.js');
+				require(OC_FILE_PATH.'/js/OCSocialTag.js');
+				require(OC_FILE_PATH.'/js/OCArtifactManager.js');
+				require(OC_FILE_PATH.'/js/OCArtifactType.js');
+
+				require(OC_FILE_PATH.'/js/OCTag.js');
+				require(OC_FILE_PATH.'/js/OCTagManager.js');
+				require(OC_FILE_PATH.'/js/OCTagToken.js');
+				require(OC_FILE_PATH.'/js/OCTagBox.js');
+
+				require(OC_FILE_PATH.'/js/OCImage.js');
+				require(OC_FILE_PATH.'/js/OCImageManager.js');
+				require(OC_FILE_PATH.'/js/OCImageToken.js');
+				require(OC_FILE_PATH.'/js/OCImageParadeBox.js');
 
 				$licensesJSON = oc_get_flickr_license_info();
 				if ($licensesJSON) {
-					print('
-oc.imageManager.flickrLicenseInfo = '.$licensesJSON.';
-');
+					print('oc.imageManager.flickrLicenseInfo = '.$licensesJSON.';');
 				}
 
 				if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
-					require(ABSPATH.PLUGINDIR.'/tagaroo/js/mce/mce2/editor_plugin.js');
+					require(OC_FILE_PATH.'/js/mce/mce2/editor_plugin.js');
 				}
-				require(ABSPATH.PLUGINDIR.'/tagaroo/js/admin-edit.js');
-			die();
+				require(OC_FILE_PATH.'/js/admin-edit.js');
+				die();
 			case 'admin_css':
 				header("Content-type: text/css");
 				print(oc_get_css('admin'));
 				ob_start();
-				require(ABSPATH.PLUGINDIR.'/tagaroo/css/admin-edit.css');
-				require(ABSPATH.PLUGINDIR.'/tagaroo/css/token-styles.css');
+				require(OC_FILE_PATH.'/css/admin-edit.css');
+				require(OC_FILE_PATH.'/css/token-styles.css');
 				$css = ob_get_contents();
 				ob_end_clean();
-				$css = str_replace('CALAISPLUGIN', get_bloginfo('wpurl').'/wp-content/plugins/tagaroo', $css);
+				$css = str_replace('CALAISPLUGIN', OC_HTTP_PATH, $css);
 				print($css);
 				if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
-					require(ABSPATH.PLUGINDIR.'/tagaroo/css/admin-edit-wp23.css');
+					require(OC_FILE_PATH.'/css/admin-edit-wp23.css');
 				}
 				if (oc_agent_is_safari()) {
 					print('
@@ -410,16 +393,16 @@ oc.imageManager.flickrLicenseInfo = '.$licensesJSON.';
 							top: 2px;
 						}
 					');
-				}				
-			die();
+				}
+				die();
 			case 'rte_css':
 				header("Content-type: text/css");
 				print(oc_get_css('rte'));
-			die();
+				die();
 			case 'published_css':
 				header("Content-type: text/css");
 				print(oc_get_css('published'));
-			die();
+				die();
 		}
 	}
 }
@@ -444,20 +427,24 @@ function oc_get_control_wrapper($which, $id = '', $title = '') {
 			</div>
 		';
 	}
-	else if (OC_WP_GTE_25 && !OC_WP_GTE_27) {
-		$wrapper['head'] = '
+	else {
+		if (OC_WP_GTE_25 && !OC_WP_GTE_27) {
+			$wrapper['head'] = '
 			<div id="'.$id.'" class="postbox">
 				<h3>'.$title.'</h3>
 				<div class="inside">
 		';
-		$wrapper['foot'] = '
+			$wrapper['foot'] = '
 				</div>
 			</div>
 		';
-	}
-	else if (OC_WP_GTE_27) {
-		// handled via add_meta_box
-		return '';
+		}
+		else {
+			if (OC_WP_GTE_27) {
+				// handled via add_meta_box
+				return '';
+			}
+		}
 	}
 	return $wrapper[$which];
 }
@@ -523,11 +510,11 @@ function oc_render_image_controls() {
 					<select id="oc_images_sort_select">
 						'.$options.'
 					</select>
-					<label>Sort Order:</label> 
+					<label>Sort Order:</label>
 					<input id="oc_sort_direction_asc" type="radio" name="oc_sort_direction" value="asc"/>
 					<label for="oc_sort_direction_asc">Ascending</label>
 					<input id="oc_sort_direction_desc" type="radio" name="oc_sort_direction" value="desc" checked="checked"/>
-					<label for="oc_sort_direction_desc">Descending</label>					
+					<label for="oc_sort_direction_desc">Descending</label>
 				</div>
 				<div class="clear"></div>
 				<div id="oc_image_preview"></div>
@@ -538,6 +525,7 @@ function oc_render_image_controls() {
 function oc_open_dbx_group() {
 	print('<div class="dbx-group" id="oc-dbx">');
 }
+
 function oc_close_dbx_group() {
 	print('</div>');
 }
@@ -546,6 +534,7 @@ if ($oc_key_entered) {
 	if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
 		add_action('edit_form_advanced', 'oc_open_dbx_group');
 	}
+
 	if (!OC_WP_GTE_27) {
 		add_action('edit_form_advanced', 'oc_render_image_controls');
 		add_action('edit_form_advanced', 'oc_render_tag_controls');
@@ -553,18 +542,18 @@ if ($oc_key_entered) {
 	else {
 		// use the meta_box
 	}
+
 	if (OC_WP_GTE_23 && !OC_WP_GTE_25) {
 		add_action('edit_form_advanced', 'oc_close_dbx_group');
 	}
 }
-
 
 function oc_get_css($which) {
 	switch ($which) {
 		case 'published':
 			return '
 			';
-		case 'admin': 
+		case 'admin':
 			print('
 #oc_preview_loading {
 	position:absolute;
@@ -579,32 +568,32 @@ function oc_get_css($which) {
 #oc_tag_searching_indicator,
 #oc_suggest_tags_link {
 	position:absolute;
-	top: '.(OC_WP_GTE_27 ? '4px' : '7px').';
+	top: '.(OC_WP_GTE_33 ? '11px' : (OC_WP_GTE_27 ? '4px' : '7px')).';
 	height:16px;
 	display:none;
 	text-align: right;
 	font-size: 11px;
 	font-weight: normal;
-} 
+}
 #oc_tag_searching_indicator {
-	background:url('.OC_HTTP_PATH.'/images/'.(OC_WP_GTE_27 ? 'loading-trans.gif' : 'loading.gif').') center right no-repeat;	
-	width:200px;
-	right: 6px;
+	background:url('.OC_HTTP_PATH.'/images/'.(OC_WP_GTE_27 ? 'loading-trans.gif' : 'loading.gif').') center right no-repeat;
+	width: 200px;
+	right: '.(OC_WP_GTE_33 ? '11px' : '6px').';
 	padding: 3px 25px 0 0;
 	color: #909090;
-	line-height:12px;
+	line - height:12px;
 }
 #oc_suggest_tags_link {
 	width:100px;
-	right: 6px;
-	top: '.(OC_WP_GTE_27 ? '3px' : '6px').';
+	right: '.(OC_WP_GTE_33 ? '11px' : '6px').';
+	top: '.(OC_WP_GTE_33 ? '11px' : (OC_WP_GTE_27 ? '3px' : '6px')).';
 	padding: 1px 8px 1px 2px;
-	line-height:15px;
-	background: white url('.OC_HTTP_PATH.'/images/Calais-icon_16x16.jpg) 3px 50% no-repeat;
+	line - height:15px;
+	background: white url('.OC_HTTP_PATH.'/images/Calais-icon_16x16.jpg) 3px 50 % no-repeat;
 	border:1px solid #bbb;
 	text-decoration:none;
 }
-#oc_suggest_tags_link a, 
+#oc_suggest_tags_link a,
 #oc_suggest_tags_link a:visited {
 	color: #21759B;
 }
@@ -627,23 +616,23 @@ function oc_get_css($which) {
 	background: url('.OC_HTTP_PATH.'/images/loading-black.gif) no-repeat;	
 }
 .right_textTokenButton {
-	display:block;
-	float:right;
-	position:relative;
+	display: block;
+	float: right;
+	position: relative;
 	width:16px;
 	height:16px;
 	margin:0 6px 0 0;
 	top:2px;
 }
 .left_textTokenButton {
-	display:inline;
-	position:relative;
-	color:gray;
+	display: inline;
+	position: relative;
+	color: gray;
 	width:10px;
 	height:10px;
 	padding: 0 5px;
 	margin:0 6px 0 0;
-	top:1px;	
+	top:1px;
 }
 .oc_tagToken {
 	background: #dbf1fc url('.OC_HTTP_PATH.'/images/tag-background.gif) center center repeat-x;
@@ -679,6 +668,7 @@ function oc_get_css($which) {
 }
 #oc_images_page_fwd, #oc_images_page_fwd.disabled, #oc_images_page_back, #oc_images_page_back.disabled {
 	background: url('.OC_HTTP_PATH.'/images/image-nav-background.gif) 0 0 no-repeat;
+	'.(!OC_WP_GTE_33 ? 'margin: 40px 15px 0;' : '').'
 }
 #oc_preview_insert_sizes li.square {
 	background: url('.OC_HTTP_PATH.'/images/img-size-75.png);
@@ -697,7 +687,7 @@ function oc_get_css($which) {
 }
 
 			');
-			return 	'
+			return '
 			';
 		case 'rte':
 			return '
@@ -711,7 +701,7 @@ function oc_menu_items() {
 		add_options_page(
 			'tagaroo Options'
 			, 'tagaroo'
-			, 10
+			, 'manage_options'
 			, basename(__FILE__)
 			, 'oc_options_form'
 		);
@@ -723,7 +713,7 @@ add_action('admin_menu', 'oc_menu_items');
 function oc_options_form() {
 	global $oc_api_key, $oc_key_entered, $oc_relevance_minimum, $oc_auto_fetch;
 	$error = '';
-	
+
 	$api_msg = '';
 	if (!$oc_key_entered) {
 		$api_msg = '
@@ -735,13 +725,13 @@ function oc_options_form() {
 				<li>You’re done!</li>
 			</ul>';
 	}
-	if ($_GET['oc_api_test_failed']) {
+	if (isset($_GET['oc_api_test_failed'])) {
 		$error = '<p><span class="error" style="padding:3px;"><strong>Error</strong>: '.$_GET['oc_api_test_failed'].'</span></p>';
 	}
-	if ($_GET['oc_update_failed']) {
+	if (isset($_GET['oc_update_failed'])) {
 		$error = '<p><span class="error" style="padding:3px;"><strong>Error</strong>: Could not update API key.</span></p>';
 	}
-	if (empty($error) && $_GET['oc_key_changed'] == true && !empty($oc_api_key)) {
+	if (empty($error) && isset($_GET['oc_key_changed']) && $_GET['oc_key_changed'] == true && !empty($oc_api_key)) {
 		$api_msg = '<p>Your API Key is valid. Enjoy!</p>';
 	}
 	else if (!empty($error)) {
@@ -749,7 +739,7 @@ function oc_options_form() {
 	}
 
 	$searchable_checked = 'checked="checked"';
-	$distribute_checked = 'checked="checked"';	
+	$distribute_checked = 'checked="checked"';
 	$privacy_prefs = get_option('oc_privacy_prefs');
 	if ($privacy_prefs) {
 		if ($privacy_prefs['allow_search'] != 'yes') {
@@ -757,7 +747,7 @@ function oc_options_form() {
 		}
 		if ($privacy_prefs['allow_distribution'] != 'yes') {
 			$distribute_checked = '';
-		}		
+		}
 	}
 	print('
 		<div class="wrap">
@@ -830,12 +820,13 @@ function oc_admin_head() {
 	global $oc_key_entered;
 	if (oc_on_edit_page() && $oc_key_entered) {
 		print('
-			<script type="text/javascript" src="'.get_bloginfo('wpurl').'/wp-admin/index.php?oc_action=admin_js"></script>
-			<link type="text/css" href="'.get_bloginfo('wpurl').'/wp-admin/index.php?oc_action=admin_css" rel="stylesheet" />
-			<!--[if IE]>
-			<link type="text/css" href="'.get_bloginfo('wpurl').'/wp-content/plugins/tagaroo/css/ie6.css" rel="stylesheet" />
-			<![endif]-->
-		');
+	<script type="text/javascript" src="'.admin_url('index.php?oc_action=admin_js').'"></script>
+	<link type="text/css" href="'.admin_url('index.php?oc_action=admin_css').'" rel="stylesheet" />
+	<link type="text/css" href="'.admin_url('index.php?oc_action=admin_css').'" rel="stylesheet" />
+	<!--[if IE]>
+	<link type="text/css" href="'.OC_HTTP_PATH.'/css/ie6.css" rel="stylesheet" />
+	<![endif]-->
+	');
 		if (OC_WP_GTE_27) {
 			add_meta_box('oc_tag_controls', 'tagaroo Tags', 'oc_render_tag_controls', 'post', 'normal', 'high');
 			add_meta_box('oc_image_controls', 'tagaroo Images', 'oc_render_image_controls', 'post', 'normal', 'high');
@@ -848,24 +839,28 @@ if (OC_WP_GTE_25) {
 	function oc_addMCE_plugin($plugins) {
 		global $oc_key_entered;
 		if ($oc_key_entered) {
-			$plugins['tagaroo'] = get_bloginfo('wpurl').'/wp-content/plugins/tagaroo/js/mce/mce3/editor_plugin.js';
+			$plugins['tagaroo'] = OC_HTTP_PATH.'/js/mce/mce3/editor_plugin.js';
 		}
 		return $plugins;
 	}
+
 	if (oc_on_edit_page()) {
 		add_filter('mce_external_plugins', 'oc_addMCE_plugin');
 	}
 }
-else if (OC_WP_GTE_23) {
-	function oc_addMCE_plugin($plugins) {
-		global $oc_key_entered;
-		if ($oc_key_entered) {
-			$plugins[] = 'tagaroo';
+else {
+	if (OC_WP_GTE_23) {
+		function oc_addMCE_plugin($plugins) {
+			global $oc_key_entered;
+			if ($oc_key_entered) {
+				$plugins[] = 'tagaroo';
+			}
+			return $plugins;
 		}
-		return $plugins;
-	}
-	if (oc_on_edit_page()) {
-		add_filter('mce_plugins', 'oc_addMCE_plugin');
+
+		if (oc_on_edit_page()) {
+			add_filter('mce_plugins', 'oc_addMCE_plugin');
+		}
 	}
 }
 
@@ -878,23 +873,23 @@ function oc_generate_commit_id($post) {
 }
 
 function oc_save_post($post_id, $post) {
-	if( OC_WP_GTE_26 && $post->post_type == 'revision') {
-		// it's at least WP2.6 and a revision, so don't add meta data, just return. 
+	if (OC_WP_GTE_26 && $post->post_type == 'revision') {
+		// it's at least WP2.6 and a revision, so don't add meta data, just return.
 		return;
 	}
 	if ($post->post_status == 'publish') {
 		// commit the content to opencalais
 		$privacy_prefs = get_option('oc_privacy_prefs');
-		
+
 		$oc_id = get_post_meta($post_id, 'oc_commit_id');
 		if (!$oc_id) {
 			$oc_id = oc_generate_commit_id($post);
 			add_post_meta($post_id, 'oc_commit_id', $oc_id);
 		}
 		$params = oc_api_param_xml(
-			$oc_id, 
-			'', 
-			($privacy_prefs['allow_distribution'] == 'yes'), 
+			$oc_id,
+			'',
+			($privacy_prefs['allow_distribution'] == 'yes'),
 			($privacy_prefs['allow_search'] == 'yes')
 		);
 		$result = oc_ping_oc_api($post->post_content, OC_FINAL_CONTENT, $params);
