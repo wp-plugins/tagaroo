@@ -3,7 +3,7 @@ Tags: tag, tags, tagging, semantic data, photo, photos, pictures, Flickr, calais
 Contributors: alexkingorg, crowdfavorite
 Requires at least: 2.7
 Tested up to: 3.4.1
-Stable tag: 1.4.5
+Stable tag: 1.4.6
 
 Use tagaroo to get semantic data to use as tags and photo for your posts.
 
@@ -34,10 +34,14 @@ Clicking on a photo will show you a larger preview of the photo, and you can cho
 
 == Changelog ==
 
+= 1.4.6 =
+
+* Fixed bug with the setting of response headers in flickr api proxy
+
 = 1.4.5 =
 
-* Remove features that are now included in the version of jQuery bundled with WordPRess.
-* Tested compatibility up to WordPress 3.4.
+* Remove features that are now included in the version of jQuery bundled with WordPress
+* Tested compatibility up to WordPress 3.4
 
 = 1.4.4 =
 
